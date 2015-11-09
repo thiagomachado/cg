@@ -3,7 +3,7 @@ var game = new Phaser.Game(800, 500, Phaser.CANVAS, 'phaser-example', { preload:
 
 function preload() 
 {
-    //Carrega figura usada como ponto da extremidades
+    //Carrega figura usada como ponto das extremidades
     game.load.spritesheet('ponto', 'asset/point.png', 64, 64);
 }
 
@@ -15,46 +15,57 @@ var segmentoFim2;
 var segmento1;
 var segmento2;
 
+var s;
+var t;
+
+var cor = 'rgb(255,255,255)';
+//cria objeto do tipo ponto
+var pontoIntercecao = new Phaser.Point();
+
 function create() 
 {
 
     game.stage.backgroundColor = '#000';
-
+    
+    //adiciona imagem ao ponto inicial
     segmentoInicio1 = game.add.sprite(450, 100, 'ponto', 0);
+    //Permite que esse ponto seja arrastado com o mouse (ou touch)
     segmentoInicio1.anchor.set(0.5);
     segmentoInicio1.inputEnabled = true;
     segmentoInicio1.input.enableDrag(true);
 
     segmentoFim1 = game.add.sprite(450, 250, 'ponto', 0);
+    
     segmentoFim1.anchor.set(0.5);
     segmentoFim1.inputEnabled = true;
     segmentoFim1.input.enableDrag(true);
 
     segmentoInicio2 = game.add.sprite(400, 300, 'ponto', 1);
+    
     segmentoInicio2.anchor.set(0.5);
     segmentoInicio2.inputEnabled = true;
     segmentoInicio2.input.enableDrag(true);
 
     segmentoFim2 = game.add.sprite(400, 500, 'ponto', 1);
+    
     segmentoFim2.anchor.set(0.5);
     segmentoFim2.inputEnabled = true;
     segmentoFim2.input.enableDrag(true);
 
+    //Cria os segmentos de reta
     segmento1 = new Phaser.Line(segmentoInicio1.x, segmentoInicio1.y, segmentoFim1.x, segmentoFim1.y);
     segmento2 = new Phaser.Line(segmentoInicio2.x, segmentoInicio2.y, segmentoFim2.x, segmentoFim2.y);
 }
 
-var cor = 'rgb(255,255,255)';
-var pontoIntercecao = new Phaser.Point();
+
 
 function update() 
 {
     segmento1.fromSprite(segmentoInicio1, segmentoFim1, false);
     segmento2.fromSprite(segmentoInicio2, segmentoFim2, false);
 
-    pontoIntercecao = segmento1.intersects(segmento2, true);
-
-    if (pontoIntercecao)
+    //muda a cor da reta somente se houver intersecção
+    if (lineIntersect(segmentoInicio1,segmentoFim1,segmentoInicio2,segmentoFim2))
     {
         cor = 'rgb(255,0,0)';
     }
@@ -71,7 +82,7 @@ function render()
     game.debug.geom(segmento1, cor);
     game.debug.geom(segmento2, cor);
 
-    if (pontoIntercecao)
+    if (lineIntersect(segmentoInicio1,segmentoFim1,segmentoInicio2,segmentoFim2))
     {
         game.context.fillStyle = 'rgb(0,255,0)';
         game.context.fillRect(pontoIntercecao.x - 2, pontoIntercecao.y - 2, 5, 5);
@@ -85,3 +96,25 @@ function render()
     game.debug.text("("+segmentoFim2.x.toFixed(0)+","+segmentoFim2.y.toFixed(0)+")", segmentoFim2.x, segmentoFim2.y);
     
 }
+
+//O phaser define uma função de intersecção para o objeto line, mas como o objetivo do trabalho era escrever essa função, eu defini ela aqui
+//Recebe os pontos inciais e finais de cada segmento de reta e verifica se existe interseção
+function lineIntersect(ponto1, ponto2, ponto3, ponto4)
+{
+    var det = (ponto4.x - ponto3.x) * (ponto2.y - ponto1.y)  - (ponto4.y - ponto3.y) * (ponto2.x - ponto1.x);
+    // verifica se os segmentos são paralelos
+    if(det == 0)
+      return false;
+
+    this.s = ((ponto4.x - ponto3.x) * (ponto3.y - ponto1.y) - (ponto4.y - ponto3.y) * (ponto3.x - ponto1.x))/ det ;
+    this.t = ((ponto2.x - ponto1.x) * (ponto3.y - ponto1.y) - (ponto2.y - ponto1.y) * (ponto3.x - ponto1.x))/ det ;
+
+    //definindo paramentro na equação parametrizada da reta
+    pontoIntercecao.x = ponto1.x + (ponto2.x - ponto1.x) * this.s;
+    pontoIntercecao.y = ponto1.y + (ponto2.y - ponto1.y) * this.s;
+
+    //sempre que s e t estiverem entre 0 e 1 os segmentos se interceptam 
+    return (s>=0 && s<=1 && t>=0 && t<=1);
+}
+
+
