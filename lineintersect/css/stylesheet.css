@@ -8,17 +8,14 @@ body
 canvas
 {
     margin-left:-400px;
-<<<<<<< HEAD
     margin-top: -280px;
     position: absolute;
     left: 50%;
     top: 50%;
-=======
     margin-top: -300px;
     position: absolute;
     left: 50%;
     top: 55%;
->>>>>>> be68156dadb710819be64f699a3dcff59ddf12a5
     overflow: auto;
 }
 
