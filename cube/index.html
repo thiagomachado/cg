@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>Cubos</title>
+		<meta charset="utf-8">
+		<style>
+			body
+      {
+				background-color: #f0f0f0;
+				margin: 0px;
+				overflow: hidden;
+			}
+      canvas
+      {
+        height: 100%;
+        width: 100%;
+      }
+		</style>
+    <script src="js/three.min.js"></script>
+		<script src="js/TrackballControls.js"></script>
+
+
+	</head>
+	<body>
+    <script >
+
+					var camera, controls, scene, renderer, light;
+					var objects = [], plane;
+					init();
+					function init()
+					{
+
+							camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 500000 );
+							camera.position.set( 0, 200, 500 );
+							//Controle de camera
+							controls = new THREE.TrackballControls(camera);
+							controls.rotateSpeed = 5.0;
+							controls.zoomSpeed = 0.5;
+							controls.panSpeed = 2.0;
+							controls.noZoom = false;
+							controls.noRotate = false;
+							controls.noPan = false;
+							controls.staticMoving = false;
+							controls.dynamicDampingFactor = 0.3;
+							controls.enabled = true;
+
+							scene = new THREE.Scene();
+		          renderer = new THREE.WebGLRenderer();
+		          renderer.setSize( window.innerWidth, window.innerHeight );
+		          document.body.appendChild( renderer.domElement );
+
+							//Light
+							scene.add( new THREE.AmbientLight( 0x101010 ) );
+
+							light = new THREE.SpotLight( 0xffffff, 1.5, 500, Math.PI/16, 0.5 );
+							light.position.set(camera.position.x, camera.position.y, camera.position.z );
+							light.castShadow = true;
+							light.shadowCameraNear = 200;
+							light.shadowCameraFar = camera.far;
+							light.shadowCameraFov = 50;
+
+							light.shadowBias = -0.00022;
+
+							light.shadowMapWidth = 2048;
+							light.shadowMapHeight = 2048;
+							scene.add( light );
+
+							// Grid
+							var line_material = new THREE.LineBasicMaterial( { color: 0x303030 } ),
+								geometry = new THREE.Geometry()
+								floor = 0, step = 25;
+
+							for ( var i = 0; i <= 20; i ++ )
+							{
+								geometry.vertices.push( new THREE.Vector3( - 250, floor, i * step - 250 ) );
+								geometry.vertices.push( new THREE.Vector3(   250, floor, i * step - 250 ) );
+								geometry.vertices.push( new THREE.Vector3( i * step - 250, floor, -250 ) );
+								geometry.vertices.push( new THREE.Vector3( i * step - 250, floor,  250 ) );
+
+							}
+
+							var line = new THREE.LineSegments( geometry, line_material );
+							scene.add( line );
+
+							//Cubo
+							var geometry = new THREE.BoxGeometry( 10, 10, 10 );
+
+							for ( var i = 0; i < 100; i ++ ) {
+
+								var object = new THREE.Mesh( geometry, new THREE.MeshLambertMaterial( { color: Math.random() * 0xffffff } ) );
+
+								object.position.x = Math.random() * 500 - 250;
+								object.position.y = Math.random() * 200 + 10;
+								object.position.z = Math.random() * 500 - 250;
+
+								object.rotation.x = Math.random() * 2 * Math.PI;
+								object.rotation.y = Math.random() * 2 * Math.PI;
+								object.rotation.z = Math.random() * 2 * Math.PI;
+
+								object.castShadow = true;
+								object.receiveShadow = true;
+
+								scene.add( object );
+
+								objects.push( object );
+
+							}
+
+					}
+
+          function render()
+          {
+							controls.update();
+							var timer = 0.0001 * Date.now();
+              requestAnimationFrame( render );
+							light.position.set(camera.position.x, camera.position.y, camera.position.z );
+							camera.lookAt( scene.position );
+              renderer.render( scene, camera );
+          }
+          render();
+
+          window.addEventListener('resize', function()
+          {
+            var WIDTH = window.innerWidth,
+                HEIGHT = window.innerHeight;
+            renderer.setSize(WIDTH, HEIGHT);
+            camera.aspect = WIDTH / HEIGHT;
+            camera.updateProjectionMatrix();
+          });
+
+
+					function onDocumentMouseMove( event )
+					{
+							event.preventDefault();
+							mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+							mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+							container.style.cursor = 'auto';
+					}
+
+					function onDocumentMouseDown( event )
+					{
+							event.preventDefault();
+						 	container.style.cursor = 'move';
+					}
+
+					function onDocumentMouseUp( event )
+					{
+							event.preventDefault();
+							controls.enabled = true;
+							container.style.cursor = 'auto';
+					}
+    </script>
+  </body>
+</html>
