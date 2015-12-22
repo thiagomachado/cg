@@ -17,37 +17,25 @@
       }
 		</style>
     <script src="js/three.min.js"></script>
-		<script src="js/TrackballControls.js"></script>
 		<script src="js/CanvasRenderer.js"></script>
 		<script src="js/Projector.js"></script>
 		<script src="js/Detector.js"></script>
-
-
+		<script src="js/OrbitControls.js"></script>
 	</head>
 	<body>
     <script >
 
-					var camera, controls, scene, renderer, light;
+					var camera, controls, scene, renderer, light, projector;
 					var objects = [];
+					var raycaster;
+					var mouse;
 					init();
+
 					function init()
 					{
 
 							camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 500000 );
 							camera.position.set( 0, 200, 500 );
-							//Controle de camera
-							controls = new THREE.TrackballControls(camera);
-							controls.rotateSpeed = 5.0;
-							controls.zoomSpeed = 0.1;
-							controls.panSpeed = 2.0;
-							controls.noZoom = false;
-							controls.noRotate = false;
-							controls.noPan = false;
-							controls.staticMoving = false;
-							controls.dynamicDampingFactor = 0.3;
-							controls.enabled = true;
-
-							scene = new THREE.Scene();
 
 							// Verifica se tem renderer webgl, caso não tenha exibe com Canvas
 							if ( Detector.webgl )
@@ -55,12 +43,23 @@
 							else
 								renderer = new THREE.CanvasRenderer();
 
-		          renderer.setSize( window.innerWidth, window.innerHeight );
-		          document.body.appendChild( renderer.domElement );
+							renderer.setSize( window.innerWidth, window.innerHeight );
+							document.body.appendChild( renderer.domElement );
+
+
+							scene = new THREE.Scene();
+
+							//Controle de camera
+							controls = new THREE.OrbitControls( camera, renderer.domElement );
+							controls.enableDamping = true;
+							controls.dampingFactor = 0.25;
+							controls.enableZoom = true;
+							controls.enablePan = false;
+							controls.zoomSpeed = 0.5;
 
 							//Luz
-							scene.add( new THREE.AmbientLight( 0x101010 ) );
-							light = new THREE.PointLight(0xffffff, 2.0, 500, 3.5);
+							scene.add( new THREE.AmbientLight( 0x010101 ) );
+							light = new THREE.PointLight(0xffffff, 2.0, 700, 1.5);
 							light.position.set(camera.position.x, camera.position.y, camera.position.z);
 							scene.add(light);
 
@@ -81,13 +80,21 @@
 							var line = new THREE.LineSegments( geometry, line_material );
 							scene.add( line );
 
-
+							projector = new THREE.Projector();
+							raycaster = new THREE.Raycaster();
+											mouse = new THREE.Vector2();
 
 							for ( var i = 0; i < 100; i ++ )
 							{
 								addNewCube(Math.random() * 500 - 250, Math.random() * 200 + 10, Math.random() * 500 - 250);
 							}
 
+							//eventos
+							// document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+							 document.addEventListener( 'mousedown', onDocumentMouseDown, false );
+							 document.addEventListener( 'mouseup', onDocumentMouseUp, false );
+							// document.addEventListener( 'keydown', onDocumentKeyDown, false );
+							// document.addEventListener( 'keyup', onDocumentKeyUp, false );
 					}
 
           function render()
@@ -111,26 +118,26 @@
           });
 
 
-					function onDocumentMouseMove( event )
-					{
-							event.preventDefault();
-							mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
-							mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
-							container.style.cursor = 'auto';
-					}
-
-					function onDocumentMouseDown( event )
-					{
-							event.preventDefault();
-						 	container.style.cursor = 'move';
-					}
-
-					function onDocumentMouseUp( event )
-					{
-							event.preventDefault();
-							controls.enabled = true;
-							container.style.cursor = 'auto';
-					}
+					// function onDocumentMouseMove( event )
+					// {
+					// 		event.preventDefault();
+					// 		mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+					// 		mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+					// 		container.style.cursor = 'auto';
+					// }
+					//
+					// function onDocumentMouseDown( event )
+					// {
+					// 		event.preventDefault();
+					// 	 	container.style.cursor = 'move';
+					// }
+					//
+					// function onDocumentMouseUp( event )
+					// {
+					// 		event.preventDefault();
+					// 		controls.enabled = true;
+					// 		container.style.cursor = 'auto';
+					// }
 
 					function addNewCube(x, y, z)
 					{
@@ -153,6 +160,32 @@
 
 							this.objects.push( object );
 					}
+
+					function onDocumentMouseDown( event )
+					{
+
+									event.preventDefault();
+
+									mouse.x = ( event.clientX / renderer.domElement.clientWidth ) * 2 - 1;
+									mouse.y = - ( event.clientY / renderer.domElement.clientHeight ) * 2 + 1;
+
+									raycaster.setFromCamera( mouse, camera );
+
+									var intersects = raycaster.intersectObjects( objects );
+
+									if ( intersects.length > 0 ) {
+
+										intersects[ 0 ].object.material.color.setHex(0xff0000 );
+										controls.enableRotate = false;
+									}
+
+					}
+					function onDocumentMouseUp(event)
+					{
+						controls.enableRotate = true;
+					}
+
+
     </script>
   </body>
 </html>
