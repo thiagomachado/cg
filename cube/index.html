@@ -29,6 +29,7 @@
 					var objects = [];
 					var raycaster;
 					var mouse;
+					var selectedObject;
 					init();
 
 					function init()
@@ -82,7 +83,7 @@
 
 							projector = new THREE.Projector();
 							raycaster = new THREE.Raycaster();
-											mouse = new THREE.Vector2();
+							mouse = new THREE.Vector2();
 
 							for ( var i = 0; i < 100; i ++ )
 							{
@@ -143,8 +144,8 @@
 					{
 						//Cubo
 							var geometry = new THREE.BoxGeometry( 15, 15, 15 );
-							var object = new THREE.Mesh( geometry, new THREE.MeshLambertMaterial( { color: Math.random() * 0xffffff } ) );
-
+							var object = new THREE.Mesh( geometry, new THREE.MeshPhongMaterial( { color: 0xffffff } ) );
+							object.metal = true;
 							object.position.x = x;
 							object.position.y = y;
 							object.position.z = z;
@@ -164,25 +165,37 @@
 					function onDocumentMouseDown( event )
 					{
 
-									event.preventDefault();
+							event.preventDefault();
+							//posição do mouse na matriz que é exibida na tela
+							mouse.x = ( event.clientX / renderer.domElement.clientWidth ) * 2 - 1;
+							mouse.y = - ( event.clientY / renderer.domElement.clientHeight ) * 2 + 1;
 
-									mouse.x = ( event.clientX / renderer.domElement.clientWidth ) * 2 - 1;
-									mouse.y = - ( event.clientY / renderer.domElement.clientHeight ) * 2 + 1;
+							//vetor do ponto (x,y) no eixo z, de acordo com a posição da camera
+							raycaster.setFromCamera( mouse, camera );
 
-									raycaster.setFromCamera( mouse, camera );
+							//objetos que são interceptados pelo vetor em ordem de distancia, o primeiro é o mais proximo da camera
+							var intersects = raycaster.intersectObjects( objects );
 
-									var intersects = raycaster.intersectObjects( objects );
-
-									if ( intersects.length > 0 ) {
-
-										intersects[ 0 ].object.material.color.setHex(0xff0000 );
-										controls.enableRotate = false;
-									}
+							if ( intersects.length > 0 )
+							{
+								selectedObject = intersects[0].object;
+								//muda a cor do cubo selecionado
+								selectedObject.material.color.setHex(0xff0000 );
+								selectedObject.emissive = 0xff0000;
+								selectedObject.shininess = 60;
+								//desativa os controles da cena qdo seleciona um cubo
+								controls.enableRotate = false;
+								controls.enableZoom = false;
+							}
 
 					}
 					function onDocumentMouseUp(event)
 					{
+						//ativa os controles da cena
 						controls.enableRotate = true;
+						controls.enableZoom = true;
+						//volta a cor original do cubo
+						selectedObject.material.color.setHex(0xffffff );
 					}
 
 
