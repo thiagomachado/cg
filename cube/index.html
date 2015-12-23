@@ -17,55 +17,69 @@
       }
 		</style>
     <script src="js/three.min.js"></script>
-		<script src="js/TrackballControls.js"></script>
-
-
+		<script src="js/CanvasRenderer.js"></script>
+		<script src="js/Projector.js"></script>
+		<script src="js/Detector.js"></script>
+		<script src="js/OrbitControls.js"></script>
 	</head>
 	<body>
     <script >
 
-					var camera, controls, scene, renderer, light;
-					var objects = [], plane;
+					var camera, container, controls, scene, renderer, light, projector;
+					var positionX, positionY, positionZ;
+					var objects = [];
+					var planes = [];
+					var raycaster;
+					var mouse;
+					var selectedObject;
+					var SELECTED, INTERSECTED;
 					init();
+					var modo;
+					verifyMode();
+
 					function init()
 					{
+							container = document.createElement( 'div' );
+							document.body.appendChild( container );
+							var menu = document.createElement( 'div' );
+							menu.style.position = 'absolute';
+							menu.style.top = '10px';
+							menu.style.width = '100%';
+							menu.style.color = '#fff';
+							menu.style.textAlign = 'center';
+							menu.innerHTML = '<form name="menu"><input type="radio" value="1" checked name="modo"/> <label>Visualização</label> <input type="radio" name="modo" value="2"/> <label>Inserção</label></form><br>Aperte d para deletar enquanto segura o objeto';
+							container.appendChild( menu );
 
 							camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 500000 );
 							camera.position.set( 0, 200, 500 );
-							//Controle de camera
-							controls = new THREE.TrackballControls(camera);
-							controls.rotateSpeed = 5.0;
-							controls.zoomSpeed = 0.5;
-							controls.panSpeed = 2.0;
-							controls.noZoom = false;
-							controls.noRotate = false;
-							controls.noPan = false;
-							controls.staticMoving = false;
-							controls.dynamicDampingFactor = 0.3;
-							controls.enabled = true;
+
+							// Verifica se tem renderer webgl, caso não tenha exibe com Canvas
+							if ( Detector.webgl )
+								renderer = new THREE.WebGLRenderer( {antialias:true} );
+							else
+								renderer = new THREE.CanvasRenderer();
+
+							renderer.setSize( window.innerWidth, window.innerHeight );
+							document.body.appendChild( renderer.domElement );
+
 
 							scene = new THREE.Scene();
-		          renderer = new THREE.WebGLRenderer();
-		          renderer.setSize( window.innerWidth, window.innerHeight );
-		          document.body.appendChild( renderer.domElement );
 
-							//Light
-							scene.add( new THREE.AmbientLight( 0x101010 ) );
+							//Controle de camera
+							controls = new THREE.OrbitControls( camera, renderer.domElement );
+							controls.enableDamping = true;
+							controls.dampingFactor = 0.25;
+							controls.enableZoom = true;
+							controls.enablePan = false;
+							controls.zoomSpeed = 0.5;
 
-							light = new THREE.SpotLight( 0xffffff, 1.5, 500, Math.PI/16, 0.5 );
-							light.position.set(camera.position.x, camera.position.y, camera.position.z );
-							light.castShadow = true;
-							light.shadowCameraNear = 200;
-							light.shadowCameraFar = camera.far;
-							light.shadowCameraFov = 50;
+							//Luz
+							scene.add( new THREE.AmbientLight( 0x010101 ) );
+							light = new THREE.PointLight(0xffffff, 2.0, 700, 1.5);
+							light.position.set(camera.position.x, camera.position.y, camera.position.z);
+							scene.add(light);
 
-							light.shadowBias = -0.00022;
-
-							light.shadowMapWidth = 2048;
-							light.shadowMapHeight = 2048;
-							scene.add( light );
-
-							// Grid
+							// Grade
 							var line_material = new THREE.LineBasicMaterial( { color: 0x303030 } ),
 								geometry = new THREE.Geometry()
 								floor = 0, step = 25;
@@ -82,30 +96,29 @@
 							var line = new THREE.LineSegments( geometry, line_material );
 							scene.add( line );
 
-							//Cubo
-							var geometry = new THREE.BoxGeometry( 10, 10, 10 );
-
-							for ( var i = 0; i < 100; i ++ ) {
-
-								var object = new THREE.Mesh( geometry, new THREE.MeshLambertMaterial( { color: Math.random() * 0xffffff } ) );
-
-								object.position.x = Math.random() * 500 - 250;
-								object.position.y = Math.random() * 200 + 10;
-								object.position.z = Math.random() * 500 - 250;
-
-								object.rotation.x = Math.random() * 2 * Math.PI;
-								object.rotation.y = Math.random() * 2 * Math.PI;
-								object.rotation.z = Math.random() * 2 * Math.PI;
-
-								object.castShadow = true;
-								object.receiveShadow = true;
-
-								scene.add( object );
-
-								objects.push( object );
-
+							for(i = 0; i <= 2*Math.PI; i += Math.PI/6)
+							{
+								var	plane = new THREE.Mesh( new THREE.PlaneGeometry(Math.sqrt(2*250000 - 2*250000*Math.cos(i)), 500), new THREE.MeshBasicMaterial( {color: 0x0000ff, side: THREE.DoubleSide,visible: false} ));
+								scene.add(plane);
+								rotateAroundObjectAxisY(plane, i);
+								this.planes.push(plane);
 							}
 
+							projector = new THREE.Projector();
+							raycaster = new THREE.Raycaster();
+							mouse = new THREE.Vector3();
+
+							for ( var i = 0; i < 10; i ++ )
+							{
+								addNewCube(Math.random() * 500 - 250, Math.random() * 200 + 10, Math.random() * 500 - 250);
+							}
+
+							//eventos
+							document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+							document.addEventListener( 'mousedown', onDocumentMouseDown, false );
+							document.addEventListener( 'mouseup', onDocumentMouseUp, false );
+							document.addEventListener( 'keydown', onDocumentKeyDown, false );
+							// document.addEventListener( 'keyup', onDocumentKeyUp, false );
 					}
 
           function render()
@@ -116,38 +129,150 @@
 							light.position.set(camera.position.x, camera.position.y, camera.position.z );
 							camera.lookAt( scene.position );
               renderer.render( scene, camera );
+							verifyMode();
           }
           render();
 
           window.addEventListener('resize', function()
           {
-            var WIDTH = window.innerWidth,
-                HEIGHT = window.innerHeight;
-            renderer.setSize(WIDTH, HEIGHT);
-            camera.aspect = WIDTH / HEIGHT;
-            camera.updateProjectionMatrix();
+	            var WIDTH = window.innerWidth,
+	                HEIGHT = window.innerHeight;
+	            renderer.setSize(WIDTH, HEIGHT);
+	            camera.aspect = WIDTH / HEIGHT;
+	            camera.updateProjectionMatrix();
           });
 
-
-					function onDocumentMouseMove( event )
+					function addNewCube(x, y, z)
 					{
-							event.preventDefault();
-							mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
-							mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
-							container.style.cursor = 'auto';
+						//Cubo
+							var geometry = new THREE.BoxGeometry( 15, 15, 15 );
+							var object = new THREE.Mesh( geometry, new THREE.MeshPhongMaterial( { color: 0xffffff } ) );
+							object.metal = true;
+							object.position.x = x;
+							object.position.y = y;
+							object.position.z = z;
+
+							object.rotation.x = Math.random() * 2 * Math.PI;
+							object.rotation.y = Math.random() * 2 * Math.PI;
+							object.rotation.z = Math.random() * 2 * Math.PI;
+
+							object.castShadow = true;
+							object.receiveShadow = true;
+
+							this.scene.add( object );
+
+							this.objects.push( object );
 					}
 
 					function onDocumentMouseDown( event )
 					{
+
 							event.preventDefault();
-						 	container.style.cursor = 'move';
+							//posição do mouse na matriz que é exibida na tela
+							mouse.x = ( event.clientX / renderer.domElement.clientWidth ) * 2 - 1;
+							mouse.y = - ( event.clientY / renderer.domElement.clientHeight ) * 2 + 1;
+
+							//vetor do ponto (x,y) no eixo z, de acordo com a posição da camera
+							raycaster.setFromCamera( mouse, camera );
+
+							//objetos que são interceptados pelo vetor em ordem de distancia, o primeiro é o mais proximo da camera
+							var intersects = raycaster.intersectObjects(objects);
+							var intersectsPlanes = raycaster.intersectObjects(planes)
+							if ( intersects.length > 0 )
+							{
+									if(modo==1)
+									{
+											selectedObject = intersects[0].object;
+											//muda a cor do cubo selecionado
+											selectedObject.material.color.setHex(0xff0000 );
+											selectedObject.emissive = 0xff0000;
+											selectedObject.shininess = 60;
+											//desativa os controles da cena qdo seleciona um cubo
+											controls.enableRotate = false;
+											controls.enableZoom = false;
+											SELECTED = true;
+											document.body.style.cursor = 'move';
+									}
+							}
+							else
+							{
+								if(modo == 2)
+								{
+									if(intersectsPlanes.length > 0)
+									{
+											var intersectedPoint = intersectsPlanes[0].point;
+											positionX = intersectedPoint.x;
+											positionY = intersectedPoint.y;
+											positionZ = intersectedPoint.z;
+
+
+											addNewCube( positionX, positionY, positionZ);
+
+									}
+								}
+							}
+
+					}
+					function onDocumentMouseUp(event)
+					{
+							//ativa os controles da cena
+							controls.enableRotate = true;
+							controls.enableZoom = true;
+							//volta a cor original do cubo
+							if(SELECTED)
+							{
+									selectedObject.material.color.setHex(0xffffff );
+									SELECTED = false;
+							}
+
+							document.body.style.cursor = 'auto';
 					}
 
-					function onDocumentMouseUp( event )
+					function onDocumentMouseMove( event )
 					{
 							event.preventDefault();
-							controls.enabled = true;
-							container.style.cursor = 'auto';
+
+							mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+							mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+
+							raycaster.setFromCamera( mouse, camera );
+							if(SELECTED)
+							{
+									if(modo == 1)
+									{		var intersectsPlanes = raycaster.intersectObjects(planes)
+											if ( intersectsPlanes.length > 0 )
+											{
+													var intersectedPoint = intersectsPlanes[0].point;
+													selectedObject.position.x = mouse.x + intersectedPoint.x;
+													selectedObject.position.y = mouse.y + intersectedPoint.y;
+													selectedObject.position.z = mouse.z + intersectedPoint.z;
+											}
+									}
+							}
+
+					}
+
+					function verifyMode()
+					{
+							for (i=0; i < document.menu.modo.length; i++)
+							{
+									if (document.menu.modo[i].checked)
+									{
+											modo = document.menu.modo[i].value;
+											break;
+									}
+							}
+					}
+					function rotateAroundObjectAxisY( object, radians )
+					{
+					    var rotationMatrix = new THREE.Matrix4();
+							rotationMatrix.makeRotationY(radians);
+							object.applyMatrix(rotationMatrix);
+					}
+
+					function onDocumentKeyDown( event )
+					{
+
 					}
     </script>
   </body>
