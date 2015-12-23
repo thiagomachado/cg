@@ -25,15 +25,31 @@
 	<body>
     <script >
 
-					var camera, controls, scene, renderer, light, projector;
+					var camera, container, controls, scene, renderer, light, projector;
+					var positionX, positionY, positionZ;
 					var objects = [];
+					var planes = [];
 					var raycaster;
 					var mouse;
+					var deleteObject = false;
 					var selectedObject;
+					var SELECTED, INTERSECTED;
 					init();
+					var modo;
+					verifyMode();
 
 					function init()
 					{
+							container = document.createElement( 'div' );
+							document.body.appendChild( container );
+							var menu = document.createElement( 'div' );
+							menu.style.position = 'absolute';
+							menu.style.top = '10px';
+							menu.style.width = '100%';
+							menu.style.color = '#fff';
+							menu.style.textAlign = 'center';
+							menu.innerHTML = '<form name="menu"><input type="radio" value="1" checked name="modo"/> <label>Visualização</label> <input type="radio" name="modo" value="2"/> <label>Inserção</label></form><br>Aperte shift para deletar o objeto selecionado';
+							container.appendChild( menu );
 
 							camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 500000 );
 							camera.position.set( 0, 200, 500 );
@@ -81,21 +97,29 @@
 							var line = new THREE.LineSegments( geometry, line_material );
 							scene.add( line );
 
+							for(i = 0; i <= 2*Math.PI; i += Math.PI/6)
+							{
+								var	plane = new THREE.Mesh( new THREE.PlaneGeometry(Math.sqrt(2*250000 - 2*250000*Math.cos(i)), 500), new THREE.MeshBasicMaterial( {color: 0x0000ff, side: THREE.DoubleSide,visible: false} ));
+								scene.add(plane);
+								rotateAroundObjectAxisY(plane, i);
+								this.planes.push(plane);
+							}
+
 							projector = new THREE.Projector();
 							raycaster = new THREE.Raycaster();
-							mouse = new THREE.Vector2();
+							mouse = new THREE.Vector3();
 
-							for ( var i = 0; i < 100; i ++ )
+							for ( var i = 0; i < 10; i ++ )
 							{
 								addNewCube(Math.random() * 500 - 250, Math.random() * 200 + 10, Math.random() * 500 - 250);
 							}
 
 							//eventos
-							// document.addEventListener( 'mousemove', onDocumentMouseMove, false );
-							 document.addEventListener( 'mousedown', onDocumentMouseDown, false );
-							 document.addEventListener( 'mouseup', onDocumentMouseUp, false );
-							// document.addEventListener( 'keydown', onDocumentKeyDown, false );
-							// document.addEventListener( 'keyup', onDocumentKeyUp, false );
+							document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+							document.addEventListener( 'mousedown', onDocumentMouseDown, false );
+							document.addEventListener( 'mouseup', onDocumentMouseUp, false );
+							document.addEventListener( 'keydown', onDocumentKeyDown, false );
+							document.addEventListener( 'keyup', onDocumentKeyUp, false );
 					}
 
           function render()
@@ -106,6 +130,11 @@
 							light.position.set(camera.position.x, camera.position.y, camera.position.z );
 							camera.lookAt( scene.position );
               renderer.render( scene, camera );
+							verifyMode();
+							if(deleteObject && SELECTED)
+							{
+								scene.remove(selectedObject);
+							}
           }
           render();
 
@@ -117,28 +146,6 @@
 	            camera.aspect = WIDTH / HEIGHT;
 	            camera.updateProjectionMatrix();
           });
-
-
-					// function onDocumentMouseMove( event )
-					// {
-					// 		event.preventDefault();
-					// 		mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
-					// 		mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
-					// 		container.style.cursor = 'auto';
-					// }
-					//
-					// function onDocumentMouseDown( event )
-					// {
-					// 		event.preventDefault();
-					// 	 	container.style.cursor = 'move';
-					// }
-					//
-					// function onDocumentMouseUp( event )
-					// {
-					// 		event.preventDefault();
-					// 		controls.enabled = true;
-					// 		container.style.cursor = 'auto';
-					// }
 
 					function addNewCube(x, y, z)
 					{
@@ -174,31 +181,114 @@
 							raycaster.setFromCamera( mouse, camera );
 
 							//objetos que são interceptados pelo vetor em ordem de distancia, o primeiro é o mais proximo da camera
-							var intersects = raycaster.intersectObjects( objects );
-
+							var intersects = raycaster.intersectObjects(objects);
+							var intersectsPlanes = raycaster.intersectObjects(planes)
 							if ( intersects.length > 0 )
 							{
-								selectedObject = intersects[0].object;
-								//muda a cor do cubo selecionado
-								selectedObject.material.color.setHex(0xff0000 );
-								selectedObject.emissive = 0xff0000;
-								selectedObject.shininess = 60;
-								//desativa os controles da cena qdo seleciona um cubo
-								controls.enableRotate = false;
-								controls.enableZoom = false;
+									if(modo==1)
+									{
+											selectedObject = intersects[0].object;
+											//muda a cor do cubo selecionado
+											selectedObject.material.color.setHex(0xff0000 );
+											selectedObject.emissive = 0xff0000;
+											selectedObject.shininess = 60;
+											//desativa os controles da cena qdo seleciona um cubo
+											controls.enableRotate = false;
+											controls.enableZoom = false;
+											SELECTED = true;
+											document.body.style.cursor = 'move';
+									}
+							}
+							else
+							{
+								if(modo == 2)
+								{
+									if(intersectsPlanes.length > 0)
+									{
+											var intersectedPoint = intersectsPlanes[0].point;
+											positionX = intersectedPoint.x;
+											positionY = intersectedPoint.y;
+											positionZ = intersectedPoint.z;
+
+
+											addNewCube( positionX, positionY, positionZ);
+
+									}
+								}
 							}
 
 					}
 					function onDocumentMouseUp(event)
 					{
-						//ativa os controles da cena
-						controls.enableRotate = true;
-						controls.enableZoom = true;
-						//volta a cor original do cubo
-						selectedObject.material.color.setHex(0xffffff );
+							//ativa os controles da cena
+							controls.enableRotate = true;
+							controls.enableZoom = true;
+							//volta a cor original do cubo
+							if(SELECTED)
+							{
+									selectedObject.material.color.setHex(0xffffff );
+									SELECTED = false;
+							}
+
+							document.body.style.cursor = 'auto';
 					}
 
+					function onDocumentMouseMove( event )
+					{
+							event.preventDefault();
 
+							mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+							mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+
+							raycaster.setFromCamera( mouse, camera );
+							if(SELECTED)
+							{
+									if(modo == 1)
+									{		var intersectsPlanes = raycaster.intersectObjects(planes)
+											if ( intersectsPlanes.length > 0 )
+											{
+													var intersectedPoint = intersectsPlanes[0].point;
+													selectedObject.position.x = mouse.x + intersectedPoint.x;
+													selectedObject.position.y = mouse.y + intersectedPoint.y;
+													selectedObject.position.z = mouse.z + intersectedPoint.z;
+											}
+									}
+							}
+
+					}
+
+					function verifyMode()
+					{
+							for (i=0; i < document.menu.modo.length; i++)
+							{
+									if (document.menu.modo[i].checked)
+									{
+											modo = document.menu.modo[i].value;
+											break;
+									}
+							}
+					}
+					function rotateAroundObjectAxisY( object, radians )
+					{
+					    var rotationMatrix = new THREE.Matrix4();
+							rotationMatrix.makeRotationY(radians);
+							object.applyMatrix(rotationMatrix);
+					}
+
+					function onDocumentKeyDown( event )
+					{
+							switch( event.keyCode )
+							{
+									case 16: deleteObject = true; break;
+							}
+					}
+					function onDocumentKeyUp( event )
+					{
+							switch( event.keyCode )
+							{
+									case 16: deleteObject = false; break;
+							}
+					}
     </script>
   </body>
 </html>

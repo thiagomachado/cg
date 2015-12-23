@@ -27,8 +27,8 @@
 
 		// How far you can orbit vertically, upper and lower limits.
 		// Range is 0 to Math.PI radians.
-		this.minPolarAngle = 0; // radians
-		this.maxPolarAngle = Math.PI; // radians
+		this.minPolarAngle = Math.PI/6; // radians
+		this.maxPolarAngle = Math.PI/2; // radians
 
 		// How far you can orbit horizontally, upper and lower limits.
 		// If set, must be a sub-interval of the interval [ - Math.PI, Math.PI ].
